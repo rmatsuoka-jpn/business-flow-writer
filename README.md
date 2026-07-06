@@ -30,7 +30,8 @@ business-flow-writer/
 ├── references/
 │   └── notation.md             # 記法・JSONスキーマ・レイアウト規約
 ├── scripts/
-│   └── generate-flow.ps1       # 描画エンジン（PowerShell 7 + Excel COM）
+│   ├── generate-flow.ps1       # 描画エンジン（PowerShell 7 + Excel COM）
+│   └── validate-flow.py        # 定義JSONの静的検証（Excel不要・Python3のみ）
 └── assets/
     └── sample-flow.json        # 動作確認用サンプル（デジ庁記載例「証明書の交付」）
 ```
@@ -60,6 +61,14 @@ pwsh -File scripts/generate-flow.ps1 `
 | `-Visible` | Excel を画面に表示しながら実行（デバッグ用・任意） |
 
 フロー定義JSONの書き方は [references/notation.md](references/notation.md) を参照してください。
+
+### 定義JSONを事前チェック（任意）
+
+Excel で描画する前に、定義の不整合（存在しない `lane` 参照・宙に浮いた `flow`・未知の `type` など）を検出できます。Python 3 のみで動き、Windows / macOS / Linux を問いません。
+
+```bash
+python scripts/validate-flow.py assets/sample-flow.json
+```
 
 ## 既知の制限
 
