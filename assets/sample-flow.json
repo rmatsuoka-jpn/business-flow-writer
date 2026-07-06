@@ -1,0 +1,47 @@
+{
+  "title": "証明書の交付",
+  "lanes": [
+    { "id": "jumin", "pool": "住民", "name": "" },
+    { "id": "madoguchi", "pool": "担当課", "name": "窓口" },
+    { "id": "backyard", "pool": "担当課", "name": "バックヤード" }
+  ],
+  "nodes": [
+    { "id": "doc-shinsei", "type": "dataobject", "label": "申請書", "lane": "jumin", "col": 2, "dy": 10 },
+    { "id": "note-honnin", "type": "annotation", "label": "〇本人確認書類\n・マイナンバーカード、運転免許証 等", "lane": "jumin", "col": 4, "width": 170 },
+    { "id": "doc-shomei", "type": "dataobject", "label": "証明書", "lane": "jumin", "col": 9, "dy": 10 },
+    { "id": "note-yuso", "type": "annotation", "label": "希望者は郵送", "lane": "jumin", "col": 10, "width": 90 },
+
+    { "id": "start", "type": "start", "lane": "madoguchi", "col": 1 },
+    { "id": "t001", "type": "task", "no": "001", "label": "受付", "lane": "madoguchi", "col": 2 },
+    { "id": "t002", "type": "task", "no": "002", "label": "内容確認", "lane": "madoguchi", "col": 3 },
+    { "id": "t003", "type": "task", "no": "003", "label": "本人確認", "lane": "madoguchi", "col": 4 },
+    { "id": "t004", "type": "task", "no": "004", "label": "受理", "lane": "madoguchi", "col": 5 },
+    { "id": "t007", "type": "task", "no": "007", "label": "交付", "lane": "madoguchi", "col": 9 },
+    { "id": "end", "type": "end", "lane": "madoguchi", "col": 10 },
+
+    { "id": "t005", "type": "task", "no": "005", "label": "対象者照会", "lane": "backyard", "col": 6 },
+    { "id": "ds1", "type": "datastore", "label": "基幹システム", "lane": "backyard", "col": 6, "row": 1 },
+    { "id": "gw1", "type": "gateway", "label": "抑止対象者か", "lane": "backyard", "col": 7 },
+    { "id": "end-ex", "type": "end", "lane": "backyard", "col": 8 },
+    { "id": "note-ex", "type": "annotation", "label": "抑止対象者の場合は\n発行を抑止", "lane": "backyard", "col": 9, "width": 110 },
+    { "id": "t006", "type": "task", "no": "006", "label": "証明書出力", "lane": "backyard", "col": 8, "row": 1 },
+    { "id": "ds2", "type": "datastore", "label": "基幹システム", "lane": "backyard", "col": 9, "row": 1 }
+  ],
+  "flows": [
+    { "from": "start", "to": "t001" },
+    { "from": "t001", "to": "t002" },
+    { "from": "t002", "to": "t003" },
+    { "from": "t003", "to": "t004" },
+    { "from": "t004", "to": "t005" },
+    { "from": "t005", "to": "gw1" },
+    { "from": "gw1", "to": "end-ex", "label": "Yes" },
+    { "from": "gw1", "to": "t006", "label": "No" },
+    { "from": "t006", "to": "t007" },
+    { "from": "t007", "to": "end" },
+
+    { "from": "t005", "to": "ds1", "type": "association" },
+    { "from": "t006", "to": "ds2", "type": "association" },
+    { "from": "note-ex", "to": "end-ex", "type": "association" }
+  ],
+  "footer": "【対応する機能要件】\n005 対象者照会 ⇔ No.3 照会機能\n006 証明書出力 ⇔ No.5 発行機能"
+}

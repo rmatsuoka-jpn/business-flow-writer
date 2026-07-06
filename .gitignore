@@ -1,0 +1,8 @@
+# 生成物
+output/
+*.xlsx
+*.pdf
+*.png
+
+# Excel の一時ファイル
+~$*.xlsx
