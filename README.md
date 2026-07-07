@@ -17,7 +17,7 @@
 |---|---|---|
 | Windows | Excel COM の利用 | ✓ |
 | Microsoft Excel | オートシェイプ描画（COM経由） | ✓ |
-| PowerShell 7+ | 生成スクリプトの実行 | ✓ |
+| Windows PowerShell 5.1 以上 | 生成スクリプトの実行（OS標準の 5.1 で動作。PowerShell 7 でも可） | ✓ |
 | [Poppler](https://poppler.freedesktop.org/)（`pdftoppm`） | 生成PDFのPNG化による自己検証 | 任意 |
 
 > Excel COM を使うため、本スキルは **Windows + デスクトップ版 Excel** が必要です。macOS / Linux / Excel 未インストール環境では動作しません。
@@ -44,7 +44,7 @@ business-flow-writer/
 
 ### スクリプトを直接実行
 
-サンプル定義から xlsx（＋検証用PDF）を生成する例:
+サンプル定義から xlsx（＋検証用PDF）を生成する例（`pwsh` が無い環境では `powershell` に読み替え）:
 
 ```powershell
 pwsh -File scripts/generate-flow.ps1 `
@@ -75,6 +75,13 @@ python scripts/validate-flow.py assets/sample-flow.json
 - 差し戻しループ・線の交差回避の自動レイアウトはしない（手修正前提）
 - 既存Excelフロー図の読み取り（As-Is取り込み）は未対応
 - メッセージフロー（プール間の封筒付き破線）は association（破線）で代用
+
+## メンテナンス上の注意
+
+`scripts/generate-flow.ps1` は日本語を含むため、**必ず UTF-8（BOM付き）で保存**すること。Windows PowerShell 5.1 は BOM が無いと OS のコードページ（日本語環境では CP932）でスクリプトを読み、日本語リテラルが文字化けして解析エラーになる（PowerShell 7 は BOM 無し UTF-8 でも動くため気づきにくい）。エディタで再編集した際に BOM を落とさないよう注意。
+
+- VS Code: 右下のエンコーディング表示から `UTF-8 with BOM` を選択して保存
+- 確認: 先頭3バイトが `EF BB BF` であること
 
 ## ライセンス
 
