@@ -1,4 +1,4 @@
-#Requires -Version 7
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     フロー定義JSON から BPMN準拠の業務フロー図を Excel (.xlsx) に描画する

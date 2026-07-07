@@ -17,7 +17,7 @@
 |---|---|---|
 | Windows | Excel COM の利用 | ✓ |
 | Microsoft Excel | オートシェイプ描画（COM経由） | ✓ |
-| PowerShell 7+ | 生成スクリプトの実行 | ✓ |
+| Windows PowerShell 5.1 以上 | 生成スクリプトの実行（OS標準の 5.1 で動作。PowerShell 7 でも可） | ✓ |
 | [Poppler](https://poppler.freedesktop.org/)（`pdftoppm`） | 生成PDFのPNG化による自己検証 | 任意 |
 
 > Excel COM を使うため、本スキルは **Windows + デスクトップ版 Excel** が必要です。macOS / Linux / Excel 未インストール環境では動作しません。
@@ -44,7 +44,7 @@ business-flow-writer/
 
 ### スクリプトを直接実行
 
-サンプル定義から xlsx（＋検証用PDF）を生成する例:
+サンプル定義から xlsx（＋検証用PDF）を生成する例（`pwsh` が無い環境では `powershell` に読み替え）:
 
 ```powershell
 pwsh -File scripts/generate-flow.ps1 `

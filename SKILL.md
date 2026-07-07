@@ -9,7 +9,7 @@ description: 業務改善支援で使うBPMN準拠の業務フロー図をExcel�
 
 成果物は Excel (.xlsx)。図はすべてオートシェイプで描画するため、利用者が後から図形のドラッグ・テキスト編集・線の付け替えで自由に修正できる。**8割を自動生成し、最後の見栄えは手作業で仕上げる**運用。
 
-> **前提環境**: Windows + Microsoft Excel（COM経由で描画）+ PowerShell 7。PDFの自己検証（Step 5）には Poppler（`pdftoppm`）を任意で使う。詳細は [README.md](README.md) を参照。
+> **前提環境**: Windows + Microsoft Excel（COM経由で描画）+ PowerShell 5.1 以上（OS標準の Windows PowerShell で可。PowerShell 7 でも動く）。PDFの自己検証（Step 5）には Poppler（`pdftoppm`）を任意で使う。詳細は [README.md](README.md) を参照。
 
 記法・JSONスキーマ・レイアウト規約の詳細は [references/notation.md](references/notation.md) を必ず読むこと。
 
