@@ -158,7 +158,7 @@ try {
     }
 
     # ---- タイトル ----
-    $titleShp = New-Label $DiagLeft 12 500 24 "【業務フロー】$($def.title)" 12 1
+    $titleShp = New-Label -l $DiagLeft -t 12 -w 500 -h 24 -text "【業務フロー】$($def.title)" -size 12 -align 1
     $titleShp.TextFrame2.TextRange.Font.Bold = -1
 
     # ---- プール・レーンの枠 ----
@@ -218,9 +218,9 @@ try {
                     # 既定はひし形の上・中央。レーン上端からはみ出す場合は左下に置く
                     # （下の分岐線・右の分岐ラベルと重ならない位置）
                     if (($cy - $h/2 - 20) -ge ($laneTop[$n.lane] + 2)) {
-                        New-Label ($x - 60) ($cy - $h/2 - 20) 120 16 "$($n.label)" 8.5 2 | Out-Null
+                        New-Label -l ($x - 60) -t ($cy - $h/2 - 20) -w 120 -h 16 -text "$($n.label)" -size 8.5 -align 2 | Out-Null
                     } else {
-                        New-Label ($x - 132) ($cy + $h/2 + 3) 120 14 "$($n.label)" 8.5 3 | Out-Null
+                        New-Label -l ($x - 132) -t ($cy + $h/2 + 3) -w 120 -h 14 -text "$($n.label)" -size 8.5 -align 3 | Out-Null
                     }
                 }
             }
@@ -253,7 +253,7 @@ try {
                 foreach ($ll in $lblLines) { if ($ll.Length -gt $maxLen) { $maxLen = $ll.Length } }
                 $lw = $maxLen * 9 + 10
                 $lh = $lblLines.Count * 14 + 4
-                $lbl = New-Label ($x + 13 + 4) ($cy - $lh/2) $lw $lh $lblText 8.5 1
+                $lbl = New-Label -l ($x + 13 + 4) -t ($cy - $lh/2) -w $lw -h $lh -text $lblText -size 8.5 -align 1
                 $lbl.TextFrame2.WordWrap = 0
             }
             "annotation" {
@@ -334,7 +334,7 @@ try {
                 $lx = $src.X + 8
                 $ly = $src.Y + $dy * 0.3 - 7
             }
-            $lbl = New-Label $lx $ly $lw 14 "$($fl.label)" 8.5 1
+            $lbl = New-Label -l $lx -t $ly -w $lw -h 14 -text "$($fl.label)" -size 8.5 -align 1
             $lbl.TextFrame2.WordWrap = 0
         }
     }
