@@ -76,6 +76,13 @@ python scripts/validate-flow.py assets/sample-flow.json
 - 既存Excelフロー図の読み取り（As-Is取り込み）は未対応
 - メッセージフロー（プール間の封筒付き破線）は association（破線）で代用
 
+## メンテナンス上の注意
+
+`scripts/generate-flow.ps1` は日本語を含むため、**必ず UTF-8（BOM付き）で保存**すること。Windows PowerShell 5.1 は BOM が無いと OS のコードページ（日本語環境では CP932）でスクリプトを読み、日本語リテラルが文字化けして解析エラーになる（PowerShell 7 は BOM 無し UTF-8 でも動くため気づきにくい）。エディタで再編集した際に BOM を落とさないよう注意。
+
+- VS Code: 右下のエンコーディング表示から `UTF-8 with BOM` を選択して保存
+- 確認: 先頭3バイトが `EF BB BF` であること
+
 ## ライセンス
 
 [MIT License](LICENSE)
