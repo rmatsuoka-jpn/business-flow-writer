@@ -63,8 +63,11 @@ $msoTextOrientationVerticalFarEast = 4
 $SiteMap = @{ top = 1; left = 2; bottom = 3; right = 4 }
 
 # ---- 定義読み込み ----
-$defPath = [System.IO.Path]::GetFullPath($Definition)
-$outPath = [System.IO.Path]::GetFullPath($Output)
+# 相対パスは PowerShell のカレント($PWD)基準で解決する。
+# [System.IO.Path]::GetFullPath は .NET の作業ディレクトリ基準になり、
+# PowerShell の cd と同期しないため（対話セッションで直接実行すると誤解決する）使わない。
+$defPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Definition)
+$outPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Output)
 $def = Get-Content -Raw -Encoding UTF8 $defPath | ConvertFrom-Json
 
 $outDir = Split-Path $outPath -Parent
