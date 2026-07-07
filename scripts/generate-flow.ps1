@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     フロー定義JSON から BPMN準拠の業務フロー図を Excel (.xlsx) に描画する
@@ -153,16 +153,6 @@ try {
         return $shp
     }
     function New-Label([double]$l, [double]$t, [double]$w, [double]$h, [string]$text, [double]$size = 8.5, [int]$align = 2) {
-        # ==== 一時デバッグ（確認後に削除する） ====
-        Write-Host "---- New-Label 呼び出し ----"
-        Write-Host ("  PSBoundParameters:")
-        foreach ($kv in $PSBoundParameters.GetEnumerator()) {
-            $tn = if ($null -ne $kv.Value) { $kv.Value.GetType().FullName } else { "<null>" }
-            Write-Host ("    {0} = [{1}]  type={2}" -f $kv.Key, $kv.Value, $tn)
-        }
-        Write-Host ("  内部呼び出し直前: text=[{0}]({1})  size=[{2}]({3})  align=[{4}]({5})" -f `
-            $text, ($text.GetType().FullName), $size, ($size.GetType().FullName), $align, ($align.GetType().FullName))
-        # ==== 一時デバッグここまで ====
         $shp = $ws.Shapes.AddTextbox(1, $l, $t, $w, $h)
         $shp.Fill.Visible = 0
         $shp.Line.Visible = 0
