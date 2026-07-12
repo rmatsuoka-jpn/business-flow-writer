@@ -42,7 +42,7 @@ $LaneStripW   = 22      # レーン名の縦書き帯
 $ColWidth     = 105     # 1列（時系列1ステップ）の幅
 $RowBaseH     = 70      # レーンの基本高さ（row 0 のみの場合）
 $RowStepH     = 65      # row が1つ増えるごとの追加高さ
-$PoolGap      = 10      # プール間の隙間
+$PoolGap      = 30      # プール間の隙間（既定。定義JSONの poolGap で上書き可）
 $FontName     = "Meiryo UI"
 
 # ---- MSO定数 ----
@@ -70,6 +70,9 @@ $defPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPa
 $outPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Output)
 $def = Get-Content -Raw -Encoding UTF8 $defPath | ConvertFrom-Json
 
+# プール間隔の全体上書き（pt）。開始プール（住民等）を離して見せたい時などに使う
+if ($null -ne $def.poolGap) { $PoolGap = [double]$def.poolGap }
+
 $outDir = Split-Path $outPath -Parent
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
 
@@ -88,7 +91,11 @@ $poolBounds = [ordered]@{}   # pool名 → @{Top;Bottom;HasLaneNames}
 $y = $TopY
 $prevPool = $null
 foreach ($ln in $def.lanes) {
-    if ($null -ne $prevPool -and $ln.pool -ne $prevPool) { $y += $PoolGap }
+    if ($null -ne $prevPool -and $ln.pool -ne $prevPool) {
+        # プール境界の隙間。プール先頭レーンの gapBefore で個別指定できる
+        $gap = if ($null -ne $ln.gapBefore) { [double]$ln.gapBefore } else { $PoolGap }
+        $y += $gap
+    }
     if (-not $poolBounds.Contains($ln.pool)) {
         $poolBounds[$ln.pool] = @{ Top = $y; Bottom = $y; HasLaneNames = $false }
     }

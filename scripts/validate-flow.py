@@ -32,6 +32,10 @@ def validate(path):
     with open(path, encoding="utf-8") as f:
         d = json.load(f)
 
+    # ---- root ----
+    if "poolGap" in d and not isinstance(d["poolGap"], (int, float)):
+        errs.append(f"poolGap '{d['poolGap']}' が数値でない")
+
     # ---- lanes ----
     lane_ids = set()
     for i, ln in enumerate(d.get("lanes", [])):
@@ -41,6 +45,8 @@ def validate(path):
         if ln.get("id") in lane_ids:
             errs.append(f"lanes[{i}]: id '{ln.get('id')}' が重複")
         lane_ids.add(ln.get("id"))
+        if "gapBefore" in ln and not isinstance(ln["gapBefore"], (int, float)):
+            errs.append(f"lanes[{i}]: gapBefore '{ln['gapBefore']}' が数値でない")
     if not lane_ids:
         errs.append("lanes が空")
 
