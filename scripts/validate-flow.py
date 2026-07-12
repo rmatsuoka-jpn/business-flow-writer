@@ -25,6 +25,7 @@ for _stream in (sys.stdout, sys.stderr):
 VALID_NODE_TYPES = {"start", "end", "task", "gateway", "datastore",
                     "dataobject", "document", "annotation"}
 VALID_SITES = {"top", "left", "bottom", "right"}
+VALID_FLOW_TYPES = {"association", "message"}
 
 
 def validate(path):
@@ -38,6 +39,7 @@ def validate(path):
 
     # ---- lanes ----
     lane_ids = set()
+    lane_pool = {}   # lane id → pool 名（message フローの同一プール判定に使う）
     for i, ln in enumerate(d.get("lanes", [])):
         for req in ("id", "pool", "name"):
             if req not in ln:
@@ -45,6 +47,7 @@ def validate(path):
         if ln.get("id") in lane_ids:
             errs.append(f"lanes[{i}]: id '{ln.get('id')}' が重複")
         lane_ids.add(ln.get("id"))
+        lane_pool[ln.get("id")] = ln.get("pool")
         if "gapBefore" in ln and not isinstance(ln["gapBefore"], (int, float)):
             errs.append(f"lanes[{i}]: gapBefore '{ln['gapBefore']}' が数値でない")
     if not lane_ids:
@@ -85,6 +88,24 @@ def validate(path):
                 if node and node.get("type") in {"dataobject", "document"}:
                     warns.append(
                         f"flows[{i}]: association が dataobject '{node.get('id')}' に接続（規約では非推奨）")
+        # 未知の flow type（警告）: ps1 側は type を association/message 以外は
+        # すべてシーケンスフロー扱いで描画するため、例外にはならないが意図しない
+        # 描画になりうる
+        flow_type = fl.get("type")
+        if flow_type is not None and flow_type not in VALID_FLOW_TYPES:
+            warns.append(
+                f"flows[{i}]: 未知の flow type '{flow_type}'  # 描画時はシーケンスフロー扱いになる")
+        # 規約(BPMN): メッセージフローはプール間のやり取りに使う（同一プール内では警告）
+        if flow_type == "message":
+            from_node = nodes_by_id.get(fl.get("from"))
+            to_node = nodes_by_id.get(fl.get("to"))
+            if from_node and to_node:
+                from_pool = lane_pool.get(from_node.get("lane"))
+                to_pool = lane_pool.get(to_node.get("lane"))
+                if from_pool is not None and from_pool == to_pool:
+                    warns.append(
+                        f"flows[{i}]: message '{fl.get('from')}' → '{fl.get('to')}' が同一プール内"
+                        "（メッセージフローはプール間のやり取りに使う。BPMN）")
 
     return errs, warns
 

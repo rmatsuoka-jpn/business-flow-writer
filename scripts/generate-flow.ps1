@@ -58,6 +58,8 @@ $msoConnectorStraight     = 1
 $msoConnectorElbow        = 2
 $msoLineDash              = 4
 $msoArrowheadTriangle     = 2
+$msoArrowheadOval         = 6
+$msoArrowheadOpen         = 3
 $msoTextOrientationVerticalFarEast = 4
 
 $SiteMap = @{ top = 1; left = 2; bottom = 3; right = 4 }
@@ -438,6 +440,7 @@ try {
         if (-not $nodeShapes.ContainsKey($fl.to))   { throw "flow の to '$($fl.to)' が nodes に存在しません" }
         $src = $nodeShapes[$fl.from]; $dst = $nodeShapes[$fl.to]
         $isAssoc = ("$($fl.type)" -eq "association")
+        $isMsg   = ("$($fl.type)" -eq "message")
         $dx = $dst.X - $src.X; $dy = $dst.Y - $src.Y
 
         $ctype = if ([math]::Abs($dx) -gt 6 -and [math]::Abs($dy) -gt 6) { $msoConnectorElbow } else { $msoConnectorStraight }
@@ -446,7 +449,11 @@ try {
         $manualSites = ($fl.fromSite -or $fl.toSite)
         $fromSite = if ($fl.fromSite) { $SiteMap["$($fl.fromSite)"] } else { 1 }
         $toSite   = if ($fl.toSite)   { $SiteMap["$($fl.toSite)"] }   else { 1 }
-        if (-not $manualSites -and -not $isAssoc -and $src.Lane -ne $dst.Lane -and
+        if (-not $manualSites -and $isMsg -and [math]::Abs($dy) -gt [math]::Abs($dx)) {
+            # メッセージフローは縦方向のプール間交差が基本形: 下→上 or 上→下で辺を固定する
+            if ($dy -gt 0) { $fromSite = 3; $toSite = 1 } else { $fromSite = 1; $toSite = 3 }
+            $manualSites = $true
+        } elseif (-not $manualSites -and -not $isAssoc -and -not $isMsg -and $src.Lane -ne $dst.Lane -and
             $src.Type -ne "gateway" -and
             [math]::Abs($dx) -gt 6 -and [math]::Abs($dy) -gt 6) {
             # レーンをまたぐ順序フローは横から出て横に入れる
@@ -461,16 +468,24 @@ try {
 
         Set-BlackLine $conn 1.0
         $conn.Shadow.Visible = 0
-        if ($isAssoc) {
+        if ($isMsg) {
+            # メッセージフロー（BPMN）: 破線・始点に小さい○・終点に開いた白抜き矢印
+            $conn.Line.DashStyle = $msoLineDash
+            $conn.Line.BeginArrowheadStyle = $msoArrowheadOval
+            $conn.Line.EndArrowheadStyle = $msoArrowheadOpen
+        } elseif ($isAssoc) {
             $conn.Line.DashStyle = $msoLineDash
         } else {
             $conn.Line.EndArrowheadStyle = $msoArrowheadTriangle
         }
 
         if ($fl.label) {
-            # ラベルは線の中間ではなく出口の近くに置く（BPMNの慣例。行き先ノードとの重なりも防ぐ）
             $lw = "$($fl.label)".Length * 9 + 12
-            if ($src.Type -eq "gateway" -and $dy -gt 20) {
+            if ($isMsg) {
+                # メッセージフローのラベルは線の中間付近に置く（出口近くだとプールを跨いで読みにくい）
+                $lx = ($src.X + $dst.X) / 2 + 6
+                $ly = ($src.Y + $dst.Y) / 2 - 7
+            } elseif ($src.Type -eq "gateway" -and $dy -gt 20) {
                 # 下方向の分岐: 縦線のすぐ右
                 $lx = $src.X + 8; $ly = $src.Y + 22
             } elseif ($src.Type -eq "gateway" -and $dy -lt -20) {
