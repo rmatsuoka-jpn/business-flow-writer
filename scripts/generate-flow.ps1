@@ -86,6 +86,38 @@ foreach ($n in $def.nodes) {
     if ($r -gt $laneRows[$n.lane]) { $laneRows[$n.lane] = $r }
 }
 
+# ---- タスクラベル切れ対策（B: レーン高さの事前拡張） ----
+# 描画前に、保守的な文字幅推定でタスクの折り返し行数・高さを見積もり、
+# レーン高さの計算に反映する（実際の折り返し幅は Meiryo UI のプロポーショナル詰めで
+# 変動するため正確な予測はできない。ここでは広めに見積もり、はみ出しを避ける）。
+# 正確な高さ合わせは描画後の個別ノード側（後述の AutoSize 実測）で行う。
+function Get-EstimatedTextWidthPt([string]$s) {
+    $wid = 0.0
+    foreach ($ch in $s.ToCharArray()) {
+        if ([int]$ch -lt 256) { $wid += 0.55 * 10 } else { $wid += 10 }
+    }
+    return $wid
+}
+function Get-EstimatedTaskHeight([object]$n) {
+    if ($n.height) { return [double]$n.height }
+    $tw = if ($n.width) { [double]$n.width } else { 88 }
+    $innerW = $tw - 8
+    $lineCount = 0
+    foreach ($ln in ("$($n.label)" -split "\r?\n")) {
+        $lw = Get-EstimatedTextWidthPt $ln
+        $lineCount += [math]::Max(1, [int][math]::Ceiling($lw / $innerW))
+    }
+    return 40 + ($lineCount - 1) * 13
+}
+$laneEstH = @{}
+foreach ($n in $def.nodes) {
+    if ("$($n.type)" -ne "task") { continue }
+    $r = if ($n.row) { [int]$n.row } else { 0 }
+    $estH = Get-EstimatedTaskHeight $n
+    $need = 35 + $r * $RowStepH + $estH / 2 + 4
+    if (-not $laneEstH.ContainsKey($n.lane) -or $need -gt $laneEstH[$n.lane]) { $laneEstH[$n.lane] = $need }
+}
+
 $laneTop = @{}; $laneH = @{}
 $poolBounds = [ordered]@{}   # pool名 → @{Top;Bottom;HasLaneNames}
 $y = $TopY
@@ -100,6 +132,8 @@ foreach ($ln in $def.lanes) {
         $poolBounds[$ln.pool] = @{ Top = $y; Bottom = $y; HasLaneNames = $false }
     }
     $h = $RowBaseH + $laneRows[$ln.id] * $RowStepH
+    # タスクラベルの折り返し推定がレーン高さの従来計算を上回る場合はそちらを採用
+    if ($laneEstH.ContainsKey($ln.id) -and $laneEstH[$ln.id] -gt $h) { $h = $laneEstH[$ln.id] }
     if ($ln.height) { $h = [double]$ln.height }
     $laneTop[$ln.id] = $y
     $laneH[$ln.id]   = $h
@@ -218,6 +252,28 @@ try {
                     $p1.ParagraphFormat.Alignment = 1
                 } else {
                     Set-ShapeText $shp "$($n.label)" 10 2
+                }
+                # ラベル切れ対策（A: 描画時の高さ自動拡張）
+                # 枠幅88ptに対し1行が長い（全角10文字以上等）と Excel が自動折り返しし、
+                # 事前計算より行数が増えて下端が切れることがある。AutoSize で実測させ、
+                # 事前計算より大きければ高さを実測値に差し替える。
+                # height を利用者が明示指定した場合はそれを尊重し、何もしない。
+                if (-not $n.height) {
+                    $shp.TextFrame2.AutoSize = 1
+                    $measuredH = $shp.Height
+                    $shp.TextFrame2.AutoSize = 0
+                    # +8pt は PDF出力時に Excel が日本語の行高を過小評価する既知問題への余白
+                    # （annotation 分岐の高さ確保と同じ理由）
+                    $fitH = $measuredH + 8
+                    if ($fitH -gt $h) { $h = $fitH }
+                    # AutoSize は WordWrap 有効時、幅を保って高さのみフィットする想定だが、
+                    # 幅がずれる場合に備えて幅・中心位置を復元する
+                    # COM プロパティへの代入は Double 型を要求するため明示キャストする
+                    # （$w / $h がリテラル起因の Int32 のままだと InvalidCastException になる）
+                    $shp.Width  = [double]$w
+                    $shp.Height = [double]$h
+                    $shp.Left = [double]($x - $w / 2)
+                    $shp.Top  = [double]($cy - $h / 2)
                 }
             }
             "gateway" {
