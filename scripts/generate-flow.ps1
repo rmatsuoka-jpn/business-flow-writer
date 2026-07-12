@@ -98,15 +98,95 @@ function Get-EstimatedTextWidthPt([string]$s) {
     }
     return $wid
 }
+
+# ---- タスクラベルの均等改行（バランス折り返し） ----
+# Excel の自動折り返しは文字単位で無造作に割るため、孤立1文字だけの行が
+# できて箱が縦に間延びする問題があった（例:「〜対応内容を / を / 長文で入力」）。
+# ここでは描画前に「各行の推定幅がなるべく均等になる」位置へ明示改行を
+# 挿入しておき、Excel の自動折り返しに頼らないようにする。
+function Get-BalancedWrappedLabel([string]$label, [double]$innerW) {
+    # 明示改行（\r?\n）は意味的な区切りとして必ず尊重し、セグメントごとに
+    # 均等折り返しを適用する（セグメントをまたいで分割はしない）。
+    $forbiddenLeading  = "、。ょっゃゅーぁぃぅぇぉ）」]｝"
+    $forbiddenTrailing = "（「[｛"
+
+    function Split-SegmentBalanced([string]$seg, [double]$innerW) {
+        if ($seg.Length -le 1) { return @($seg) }
+        $segWidth = Get-EstimatedTextWidthPt $seg
+        if ($segWidth -le $innerW) { return @($seg) }
+
+        $charWidths = @()
+        foreach ($ch in $seg.ToCharArray()) { $charWidths += (Get-EstimatedTextWidthPt "$ch") }
+        $total = ($charWidths | Measure-Object -Sum).Sum
+
+        $k = [int][math]::Ceiling($segWidth / $innerW)
+        if ($k -lt 1) { $k = 1 }
+        $maxK = [math]::Min(6, $seg.Length)
+
+        while ($true) {
+            # 累積幅が「全体幅 × i/k」を超えた直前の文字位置で分割する（均等分割）
+            $breakPositions = New-Object System.Collections.Generic.List[int]
+            $cum = 0.0
+            $targetIdx = 1
+            for ($i = 0; $i -lt $charWidths.Count; $i++) {
+                $cum += $charWidths[$i]
+                if ($targetIdx -lt $k -and $cum -ge ($total * $targetIdx / $k)) {
+                    $breakPositions.Add($i + 1)
+                    $targetIdx++
+                }
+            }
+            # 幅0連続等で分割数が k-1 に満たない場合は文字数按分で補う
+            while ($breakPositions.Count -lt ($k - 1)) {
+                $prev = if ($breakPositions.Count -eq 0) { 0 } else { $breakPositions[$breakPositions.Count - 1] }
+                $next = [int][math]::Ceiling($seg.Length * ($breakPositions.Count + 1) / $k)
+                if ($next -le $prev) { $next = $prev + 1 }
+                if ($next -ge $seg.Length) { break }
+                $breakPositions.Add($next)
+            }
+            $bp = $breakPositions | Sort-Object -Unique | Where-Object { $_ -gt 0 -and $_ -lt $seg.Length }
+
+            # 簡易禁則処理: 行頭禁則文字・行末禁則文字になる分割位置を1文字ずらす
+            # （ずらせない場合はそのまま許容する）
+            $adjusted = New-Object System.Collections.Generic.List[int]
+            foreach ($pos0 in $bp) {
+                $pos = $pos0
+                if ($pos -lt $seg.Length -and $forbiddenLeading.IndexOf($seg[$pos]) -ge 0 -and ($pos + 1) -lt $seg.Length) {
+                    $pos = $pos + 1
+                } elseif ($pos -gt 1 -and $forbiddenTrailing.IndexOf($seg[$pos - 1]) -ge 0) {
+                    $pos = $pos - 1
+                }
+                $adjusted.Add($pos)
+            }
+            $final = $adjusted | Sort-Object -Unique | Where-Object { $_ -gt 0 -and $_ -lt $seg.Length }
+
+            $lines = @()
+            $prev = 0
+            foreach ($p in $final) {
+                $lines += $seg.Substring($prev, $p - $prev)
+                $prev = $p
+            }
+            $lines += $seg.Substring($prev)
+
+            # 分割後の各行が innerW を超えていないか確認。超えていれば k を増やしてやり直す（最大6）
+            $ok = $true
+            foreach ($ln in $lines) { if ((Get-EstimatedTextWidthPt $ln) -gt $innerW) { $ok = $false; break } }
+            if ($ok -or $k -ge $maxK) { return $lines }
+            $k++
+        }
+    }
+
+    $segments = "$label" -split "\r?\n"
+    $allLines = @()
+    foreach ($seg in $segments) { $allLines += (Split-SegmentBalanced $seg $innerW) }
+    return ($allLines -join "`n")
+}
+
 function Get-EstimatedTaskHeight([object]$n) {
     if ($n.height) { return [double]$n.height }
     $tw = if ($n.width) { [double]$n.width } else { 88 }
     $innerW = $tw - 8
-    $lineCount = 0
-    foreach ($ln in ("$($n.label)" -split "\r?\n")) {
-        $lw = Get-EstimatedTextWidthPt $ln
-        $lineCount += [math]::Max(1, [int][math]::Ceiling($lw / $innerW))
-    }
+    $wrapped = Get-BalancedWrappedLabel "$($n.label)" $innerW
+    $lineCount = ($wrapped -split "`n").Count
     return 40 + ($lineCount - 1) * 13
 }
 $laneEstH = @{}
@@ -240,23 +320,27 @@ try {
         switch ($n.type) {
             "task" {
                 $w = if ($n.width) { [double]$n.width } else { 88 }
-                $labelLines = ("$($n.label)" -split "\r?\n").Count
+                $innerW = $w - 8
+                # 均等改行（バランス折り返し）を適用してから行数・高さを決める
+                # （Excel の自動折り返しに任せると孤立1文字だけの行ができるため）
+                $wrapped = Get-BalancedWrappedLabel "$($n.label)" $innerW
+                $labelLines = ($wrapped -split "`n").Count
                 $h = if ($n.height) { [double]$n.height } else { 40 + ($labelLines - 1) * 13 }
                 $shp = New-Box $msoShapeRoundedRectangle ($x - $w/2) ($cy - $h/2) $w $h
                 $shp.Adjustments.Item(1) = 0.12
                 if ($n.no) {
-                    Set-ShapeText $shp "$($n.no)`r$($n.label)" 10 2
+                    Set-ShapeText $shp "$($n.no)`r$wrapped" 10 2
                     $tr = $shp.TextFrame2.TextRange
                     $p1 = $tr.Paragraphs(1, 1)
                     $p1.Font.Size = 7.5
                     $p1.ParagraphFormat.Alignment = 1
                 } else {
-                    Set-ShapeText $shp "$($n.label)" 10 2
+                    Set-ShapeText $shp "$wrapped" 10 2
                 }
-                # ラベル切れ対策（A: 描画時の高さ自動拡張）
-                # 枠幅88ptに対し1行が長い（全角10文字以上等）と Excel が自動折り返しし、
-                # 事前計算より行数が増えて下端が切れることがある。AutoSize で実測させ、
-                # 事前計算より大きければ高さを実測値に差し替える。
+                # ラベル切れ対策（A: 描画時の高さ自動拡張・保険）
+                # 上の均等改行で行数・高さは事前に見積もり済みだが、幅推定が
+                # 実際のフォントメトリクスとズレて Excel がさらに折り返すケースに
+                # 備え、AutoSize で実測させて事前計算より大きければ差し替える。
                 # height を利用者が明示指定した場合はそれを尊重し、何もしない。
                 if (-not $n.height) {
                     $shp.TextFrame2.AutoSize = 1
