@@ -13,6 +13,15 @@ flow の from/to が nodes に無い／未知の type など）を Excel を使�
 import json
 import sys
 
+# Windows の既定コンソール（日本語環境では cp932）では絵文字・em ダッシュ（—）を
+# 出力できず UnicodeEncodeError で落ちるため、出力ストリームを UTF-8 に固定する。
+# （Python 3.7+ の TextIOWrapper.reconfigure。PYTHONUTF8=1 が無い 3.13 でも安全に動く）
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 VALID_NODE_TYPES = {"start", "end", "task", "gateway", "datastore",
                     "dataobject", "document", "annotation"}
 VALID_SITES = {"top", "left", "bottom", "right"}
